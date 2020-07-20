@@ -1,0 +1,60 @@
+version: '2'
+
+services:
+
+  mauticdatabase:
+    image: mysql:5.6
+    container_name: mauticdatabase
+    volumes:
+      - ./mysql_database:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: mautic
+      MYSQL_USER: mautic
+      MYSQL_PASSWORD: mautic
+    command:
+      --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci
+    networks:
+      - mautic-network
+
+  mautic:
+    build:
+      dockerfile: Dockerfile
+      context: ./docker-mautic-2.15.2/apache
+    image: mautic/mautic:2.15.2
+    container_name: mautic
+    links:
+      - mauticdatabase
+    depends_on:
+      - mauticdatabase
+    ports:
+      - 8080:80
+    volumes:
+      - ./mautic_data_web:/var/www/html
+    environment:
+      MAUTIC_DB_HOST: mauticdatabase
+      MYSQL_PORT_3306_TCP: '3306'
+      MAUTIC_DB_USER: mautic
+      MAUTIC_DB_PASSWORD: mautic
+      MAUTIC_DB_NAME: mautic
+      MAUTIC_RUN_CRON_JOBS: 'true'
+      MAUTIC_TRUSTED_PROXIES: 0.0.0.0/0
+    networks:
+      - mautic-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    restart: always
+    ports:
+      - 8081:80
+    links:
+      - mauticdatabase
+    environment:
+      - PMA_HOST=mauticdatabase
+    networks:
+      - mautic-network
+
+networks:
+  mautic-network:
+    driver: bridge
